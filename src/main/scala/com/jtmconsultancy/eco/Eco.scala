@@ -1,24 +1,44 @@
 package com.jtmconsultancy.eco
 
+import scala.util._
+
 
 object Eco {
 
   def main(args:Array[String]) {
-    if (args.length == 0) {
-      println("provide the bottles...")
-    } else {
-      new HandleBin().start(args(0))
+   val handleBin = new HandleBin()
+
+   val parseInput =  Try{
+
+     val numbers = inputToIntList(args)
+     if (numbers.size != 9) throw new IllegalArgumentException("wrong length")
+     intsGroupedPerThree(numbers)
+
+   }
+
+   parseInput match {
+       case Failure(_) => println("provide 9 bottles...")
+       case Success(numbersPerThree)  => handleBin.start(numbersPerThree)
     }
+  }
+
+
+  def intsGroupedPerThree(numbers: Array[Int]): List[Array[Int]] = {
+    numbers.grouped(3).toList
+  }
+
+  def inputToIntList(args: Array[String]): Array[Int] = {
+    args(0).split(" ").map(_.toInt)
   }
 }
 
 
+
 class HandleBin {
 
+  val binPermutations = "BGC".toList.permutations.toList
 
-  val binPerms = "BGC".toList.permutations.toList
-
-  def calculate(bins:List[Bin]) =  binPerms.foldLeft(List[ResultPerPermutation]()) {
+  def calculate(bins:List[Bin]) =  binPermutations.foldLeft(List[ResultPerPermutation]()) {
     (results:List[ResultPerPermutation], perm:List[Char]) => 
     results ::: List(ResultPerPermutation(tidyBinName(perm),countPerPermutation(perm, bins)))
   }
@@ -26,7 +46,6 @@ class HandleBin {
   def countPerPermutation(perm: List[Char], bins: List[Bin]): Int = perm.foldLeft(0) { (sum, char) =>
         // we want the count for a bin
         val bin = bins(perm.indexOf(char))
-
         sum + countPerBin(bin,char)
   }
 
@@ -36,33 +55,29 @@ class HandleBin {
   */
   private def countPerBin(b:Bin,c:Char):Int =  b.count(c)
 
-  /*
-  * makes a nice formatted name of a color permutation
-  */
   private def tidyBinName(l:List[Char]) = l.mkString
 
   def orderResults(results:List[ResultPerPermutation]) = results.sortBy(r => (r.moves,r.binOrder))
 
-  def start(input:String) = {
-   val binList = bins(input)
+  def start(numbersPerThree: List[Array[Int]])  {
 
-   val optimum = orderResults(calculate(binList)).head
+   val binList = bins(numbersPerThree)
+   displayResult(optimumBinOrder(binList))
    
-   println(optimum.binOrder +" "+optimum.moves)
   }
 
-  /**
-  * input string is something like '1 2 3 4 5 6 7 8 9', where each group of 3 represents in order brown, green and clear bottles.
-  * so we need a list of 3 groups (denoting the 3 bins) where in each bin the numbers represent the corresponding bottles. 
-  */
-  def createIntArraysFrom(input: String): List[Array[Int]] = {
-    val numbers = input.split(" ").map(_.toInt)
-    numbers.grouped(3).toList
+  def optimumBinOrder(binList: List[Bin]): ResultPerPermutation = {
+    orderResults(calculate(binList)).head
   }
 
-  def bins(input:String):List[Bin] = {
-    val numbersPerThree = createIntArraysFrom(input)
+  def displayResult(optimum:ResultPerPermutation) {
 
+    println(optimum.binOrder +" "+optimum.moves)
+
+  }
+
+  def bins(numbersPerThree: List[Array[Int]]):List[Bin] = {
+    
     numbersPerThree.zipWithIndex.foldLeft(List[Bin]()) {
       (binList, item) =>
         binList ::: List(Bin(item._2 + 1, item._1.toList))
